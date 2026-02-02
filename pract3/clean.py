@@ -1,6 +1,6 @@
 # import pandas as pd
-import numpy as np
-import pandas as pd
+import numpy as np # type: ignore
+import pandas as pd # type: ignore
 
 
 
@@ -21,7 +21,9 @@ def split_indices(n:int, seed:int, train_frac: float =0.70 , val_frac: float = 0
     train_idx = perm[:n_train]
     val_idx = perm[n_train:n_train+n_val]
     testing_idx = perm[n_train+n_val:]
-    print(f"training idx: \n {train_idx}, \n validation idx: \n {val_idx},  \n testings idx: \n {testing_idx}")
+
+    # print(f"training idx: \n {train_idx}, \n validation idx: \n {val_idx},  \n testings idx: \n {testing_idx}")
+
     return train_idx, val_idx, testing_idx
 
 def main ():
@@ -58,14 +60,28 @@ def main ():
     # categorial selection of training data
     x_train_cat = x_train[cat_columns]
     # series of modes
-    x_train_cat_mode = x_train_cat.mode()
+    x_train_cat_modes = x_train_cat.mode()
 
-    # look at na's
+    '''
+    gives series of which columns have NA's
+    print(x_train_numeric.isna().any())
+    gives rows that have the NA's
+    print(x_train_numeric[x_train_numeric.isna().any(axis=1)])
+    '''
 
-    print(x_train_medians)
 
-    x_imputed = x_train_numeric.fillna(x_train_medians)
+    # fills na's with medians respect to its columns
+    x_train_imputed_num = x_train_numeric.fillna(x_train_medians)
 
-    print(x_imputed.isnull())
+    # print(x_train_cat[x_train_cat.isna().any(axis=1)])
+    # fill categorial with medians to its columns
+    x_train_imputed_cat = x_train_cat.fillna(x_train_cat_modes.iloc[0]) 
 
+    x_train_mean = x_train_imputed_num.mean() #series of means on columns
+    x_train_std = x_train_imputed_num.std()
+    x_train_scaled = ((x_train_imputed_num - x_train_mean)/x_train_std)
+
+    # print(x_train_scaled)
+
+    
 main()
