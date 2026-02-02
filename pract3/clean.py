@@ -1,6 +1,6 @@
 # import pandas as pd
-import numpy as np
-import pandas as pd
+import numpy as np # type: ignore
+import pandas as pd # type: ignore
 
 
 
@@ -65,7 +65,7 @@ def main ():
     print(x_train_medians)
 
     x_imputed = x_train_numeric.fillna(x_train_medians)
-
+    
     print(x_imputed.isnull())
 
 main()
