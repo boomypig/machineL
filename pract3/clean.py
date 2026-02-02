@@ -34,14 +34,14 @@ def main ():
     train_df = df.iloc[train_idx].copy()
     val_df = df.iloc[val_idx].copy()
     test_df = df.iloc[test_idx].copy()
-    print(f"data frames trainingDF: \n {train_df},\n Validation DF: \n{val_df},\n TEST DF:\n{test_df}")
+    # print(f"data frames trainingDF: \n {train_df},\n Validation DF: \n{val_df},\n TEST DF:\n{test_df}")
 
     # seperate what we want to target
     y_train = train_df[TARGET_COL].to_numpy(dtype=float)
     y_val = val_df[TARGET_COL].to_numpy(dtype=float)
     y_test = test_df[TARGET_COL].to_numpy(dtype=float)
 
-    print(f"our target columns \n traiining targets :\n {y_train},\n validation targets: \n{y_val},\n testing targets :\n {y_test}")
+    # print(f"our target columns \n traiining targets :\n {y_train},\n validation targets: \n{y_val},\n testing targets :\n {y_test}")
 
     # we want to remove our targets and anything not necassary to train model
 
@@ -54,11 +54,17 @@ def main ():
 
     # NUMERIC selction of training data
     x_train_numeric =x_train[numeric_columns]
+    x_val_numeric = x_val[numeric_columns]
+    x_test_numeric = x_test[numeric_columns]
 
     # series of medians 
     x_train_medians = x_train_numeric.median()
+
+
     # categorial selection of training data
     x_train_cat = x_train[cat_columns]
+    x_val_cat = x_val[cat_columns]
+    x_test_cat = x_test[cat_columns]
     # series of modes
     x_train_cat_modes = x_train_cat.mode()
 
@@ -70,24 +76,46 @@ def main ():
     '''
 
 
-<<<<<<< HEAD
-    x_imputed = x_train_numeric.fillna(x_train_medians)
-    
-    print(x_imputed.isnull())
-=======
     # fills na's with medians respect to its columns
     x_train_imputed_num = x_train_numeric.fillna(x_train_medians)
+    x_val_imputed_num = x_val_numeric.fillna(x_train_medians)
+    x_test_imputed_num = x_test_numeric.fillna(x_train_medians)
 
     # print(x_train_cat[x_train_cat.isna().any(axis=1)])
     # fill categorial with medians to its columns
     x_train_imputed_cat = x_train_cat.fillna(x_train_cat_modes.iloc[0]) 
->>>>>>> 024bb8d879f457244ab647d9c63eacf7602346d1
+    x_val_imputed_cat = x_val_cat.fillna(x_train_cat_modes.iloc[0])
+    x_test_imputed_cat = x_test_cat.fillna(x_train_cat_modes.iloc[0])
 
     x_train_mean = x_train_imputed_num.mean() #series of means on columns
     x_train_std = x_train_imputed_num.std()
     x_train_scaled = ((x_train_imputed_num - x_train_mean)/x_train_std)
 
+    x_val_scaled = ((x_val_imputed_num - x_train_mean)/x_train_std)
+    x_test_scaled = ((x_test_imputed_num - x_train_mean)/x_train_std)
+
     # print(x_train_scaled)
 
+    x_train_one_hot = pd.get_dummies(x_train_imputed_cat)
+    train_oh_cols = x_train_one_hot.columns
+
+    x_val_oh = pd.get_dummies(x_val_imputed_cat).reindex(columns=train_oh_cols,fill_value=0)
+
+    x_test_oh = pd.get_dummies(x_test_imputed_cat).reindex(columns=train_oh_cols, fill_value=0)
+
+
     
-main()
+
+    X_train_np =  np.concatenate((x_train_scaled,x_train_one_hot), axis=1)
+
+    X_val_np = np.concatenate((x_val_scaled,x_val_oh), axis = 1)
+
+    X_test_np = np.concatenate((x_test_scaled,x_test_oh), axis = 1)
+
+
+    print("Train/Val/Test sizes:", len(train_df), len(val_df), len(test_df))
+    print("Numeric cols:", numeric_columns)
+    print("Categorical cols:", cat_columns)
+
+    print(X_train_np.shape,y_train.shape)
+main()  
