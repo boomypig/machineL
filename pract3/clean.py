@@ -16,9 +16,11 @@ def split_indices(n:int, seed:int, train_frac: float =0.70 , val_frac: float = 0
     perm = rng.permutation(n)
     # perm is an array of randomly sorted int from 0 --> n-1
     n_train = int(round(n * train_frac))
+    print(n_train)
     n_val = int(round(n * val_frac))
-
+    print(n_val)
     train_idx = perm[:n_train]
+    print(train_idx)
     val_idx = perm[n_train:n_train+n_val]
     testing_idx = perm[n_train+n_val:]
 
@@ -68,6 +70,8 @@ def main ():
     # series of modes
     x_train_cat_modes = x_train_cat.mode()
 
+    print(x_train_cat_modes)
+
     '''
     gives series of which columns have NA's
     print(x_train_numeric.isna().any())
@@ -81,7 +85,9 @@ def main ():
     x_val_imputed_num = x_val_numeric.fillna(x_train_medians)
     x_test_imputed_num = x_test_numeric.fillna(x_train_medians)
 
-    # print(x_train_cat[x_train_cat.isna().any(axis=1)])
+    # print(x_train_cat.isna().any(axis=1))
+
+    print(x_train_cat[x_train_cat.isna().any(axis=1)])
     # fill categorial with medians to its columns
     x_train_imputed_cat = x_train_cat.fillna(x_train_cat_modes.iloc[0]) 
     x_val_imputed_cat = x_val_cat.fillna(x_train_cat_modes.iloc[0])
@@ -89,8 +95,8 @@ def main ():
 
     x_train_mean = x_train_imputed_num.mean() #series of means on columns
     x_train_std = x_train_imputed_num.std()
-    x_train_scaled = ((x_train_imputed_num - x_train_mean)/x_train_std)
 
+    x_train_scaled = ((x_train_imputed_num - x_train_mean)/x_train_std)
     x_val_scaled = ((x_val_imputed_num - x_train_mean)/x_train_std)
     x_test_scaled = ((x_test_imputed_num - x_train_mean)/x_train_std)
 
@@ -99,6 +105,7 @@ def main ():
     x_train_one_hot = pd.get_dummies(x_train_imputed_cat)
     train_oh_cols = x_train_one_hot.columns
 
+    print(x_train_one_hot)
     x_val_oh = pd.get_dummies(x_val_imputed_cat).reindex(columns=train_oh_cols,fill_value=0)
 
     x_test_oh = pd.get_dummies(x_test_imputed_cat).reindex(columns=train_oh_cols, fill_value=0)
