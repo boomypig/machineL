@@ -14,9 +14,9 @@ TARGET_COLUMN = "compressive_strength_mpa"
 df = pd.read_csv("student-resources/concrete_compressive_strength.csv")
 y = df[TARGET_COLUMN].to_numpy(dtype=np.float64)
 x_df = df.drop(columns=[TARGET_COLUMN])
-print(y)
-print(len(x_df.columns))
-print(df.dtypes)
+# print(y)
+# print(len(x_df.columns))
+# print(df.dtypes)
 
 test_size = 0.15
 val_size = 0.15
@@ -40,8 +40,8 @@ print(f"sizes:{len(x_train),len(x_val),len(x_test)}")
 numeric_col = [c for c in x_df.columns if is_numeric_dtype(x_df[c])]
 cat_col = [c for c in x_df.columns if c not in numeric_col]
 
-print(f"numeric columns: \n {numeric_col}")
-print(f"categorial columns: \n {cat_col}")
+# print(f"numeric columns: \n {numeric_col}")
+# print(f"categorial columns: \n {cat_col}")
 
 num_pipe = Pipeline(steps=[
     ("imputer", SimpleImputer(strategy="median")),
@@ -60,17 +60,16 @@ pre = ColumnTransformer(
     ],
     remainder="drop"
 )
-print(x_train)
+# print(x_train)
 x_train_p = pre.fit_transform(x_train)
 x_val_p = pre.transform(x_val)
 x_test_p = pre.transform(x_test)
 
-print(f"Xtrain_p shape: \n {x_train_p}")
 x_train_p = np.asarray(x_train_p, dtype=np.float64)
 x_val_p = np.asarray(x_val_p,dtype=np.float64)
 x_test_p = np.asarray(x_test_p,dtype=np.float64)
 
-print(f"Xtrain_p shape: \n {x_train_p.shape}")
+# print(f"Xtrain_p shape: \n {x_train_p.shape}")
 
 def add_bias_column(x):
     new_column = np.ones((x.shape[0],1))
@@ -84,15 +83,16 @@ def add_bias_column(x):
     
     
 def predict(x,w):
-    xb = add_bias_column(x_train)
-    y_hat = x @ w
+    xb = add_bias_column(x)
+    y_hat = xb @ w
     return y_hat
 
 # y_hat = predict(x_train_p,)
 
 def mse_loss(xb,y,w):
     y_hat = xb @ w
-    return np.mean((y_hat-y)**2)
+    loss = np.mean((y_hat-y)**2)
+    return loss
 
 def mse_grad(xb,y,w):
     error = (xb @ w)-y
@@ -104,11 +104,10 @@ xb_tr = add_bias_column(x_train_p)
 xb_val = add_bias_column(x_val_p)
 
 
-
 train_losses = []
 val_losses = []
 epochs = 100
-lr = 0.1
+lr = 0.15
 def main():
     w = np.zeros(xb_tr.shape[1],dtype=np.float64)
     for epoch in range(epochs):
@@ -118,7 +117,21 @@ def main():
         train_losses.append(mse_loss(xb_tr,y_train,w))
         val_losses.append(mse_loss(xb_val,y_val,w))
 
-        if (epoch+1) % 100 == 0:print(epoch+1,train_losses[-1],val_losses[-1])
+        if (epoch+1) % 100 == 0:
+            print(epoch)
+            print("making Plot:")
+            plt.figure()
+            plt.plot(train_losses, label="train")
+            plt.plot(val_losses, label="val")
+            plt.xlabel("epoch")
+            plt.ylabel("MSE")
+            plt.legend()
+            plt.tight_layout()
+            plt.savefig("loss_curve.png", dpi=200)
+            plt.close()
+            print(epoch+1,train_losses[-1],val_losses[-1])
+            print(f"Testing MSE: \n {mse_loss(add_bias_column(x_test_p),y_test,w)}")
+
 
 main()
 
