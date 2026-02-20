@@ -21,7 +21,7 @@ x_df = df.drop(columns=[TARGET_COLUMN])
 test_size = 0.15
 val_size = 0.15
 random_state = 119
-
+    
 x_trainval,x_test,y_trainval,y_test = train_test_split(
     x_df,y,
     test_size=test_size,
