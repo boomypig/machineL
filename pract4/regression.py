@@ -63,7 +63,7 @@ pre = ColumnTransformer(
 # print(x_train)
 x_train_p = pre.fit_transform(x_train)
 x_val_p = pre.transform(x_val)
-x_test_p = pre.transform(x_test)
+x_test_p = pre.transform(x_test)            
 
 x_train_p = np.asarray(x_train_p, dtype=np.float64)
 x_val_p = np.asarray(x_val_p,dtype=np.float64)
