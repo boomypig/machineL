@@ -8,6 +8,14 @@ from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import StandardScaler,OneHotEncoder
 from sklearn.impute import SimpleImputer
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.metrics import roc_curve, roc_auc_score
+from sklearn.metrics import precision_recall_curve, average_precision_score
+
+import matplotlib.pyplot as plt
+
+
 
 def main():
     df = pd.read_csv("./telco_churn.csv")
@@ -73,17 +81,72 @@ def main():
         ("num", num_pipe, numeric_col),
         ("cat", cat_pipe, cat_col),
     ],
-    remainder="drop"
-)
-# print(x_train)
-    x_train_p = pre.fit_transform(x_train)
-    x_val_p = pre.transform(x_val)
-    x_test_p = pre.transform(x_test)            
+    remainder="drop")
 
-    print(x_train_p.shape, x_val_p.shape, x_test_p.shape)
 
     print(y.value_counts())
     print(y.dtype)
+
+
+    clf = Pipeline([('pre', pre), ("model", LogisticRegression())])
+    clf.fit(x_train,y_train)
+    probs_val = clf.predict_proba(x_val)[:, 1]
+    t= .455
+    y_hat = (probs_val >= t).astype(int)
+    print(clf.classes_)
+    # print(prob[:5])
+    # print("predict:" , y_hat[:5])
+    # y_hat_t = (prob[:5,1] >= 0.3).astype(int)
+    # print(y_hat_t)
+
+    print(confusion_matrix(y_val,y_hat))
+    print(classification_report(y_val,y_hat))
+
+    fpr, tpr, thresholds = roc_curve(y_val, probs_val)
+    auc_score = roc_auc_score(y_val, probs_val)
+
+    precision, recall, thresholds = precision_recall_curve(y_val, probs_val)
+    ap_score = average_precision_score(y_val, probs_val)
+
+    probs_test = clf.predict_proba(x_test)[:, 1]
+    yhat_test = (probs_test >= t).astype(int)
+
+    print("TEST SCORES \n ",confusion_matrix(y_test, yhat_test))
+    print("TEST SCORES \n ",classification_report(y_test, yhat_test))
+
+    plt.figure()
+    plt.plot(fpr, tpr, label=f"ROC curve (AUC = {auc_score:.3f})")
+    plt.plot([0, 1], [0, 1], linestyle="--")  # random baseline
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.title("ROC Curve")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig("roc curve", dpi=200)
+    plt.close()
+
+    plt.figure()
+    plt.plot(recall, precision, label=f"PR curve (AP = {ap_score:.3f})")
+    plt.xlabel("Recall")
+    plt.ylabel("Precision")
+    plt.title("Precision-Recall Curve")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig("precision recall  curve", dpi=200)
+    plt.close()
+
+    plt.figure()
+    plt.plot(thresholds, precision[:-1], label="Precision")
+    plt.plot(thresholds, recall[:-1], label="Recall")
+    plt.xlabel("Threshold")
+    plt.ylabel("Score")
+    plt.title("Precision and Recall vs Threshold")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig("thresholds  curve", dpi=200)
+    plt.close()
+
+
 
 # def checktypes(df):
 #     # print(df.shape)
