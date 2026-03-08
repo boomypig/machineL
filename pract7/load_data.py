@@ -4,6 +4,9 @@ import numpy as np
 import pandas as pd
 from scipy import sparse
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 
 # --------------------------------------------------
 # 5. Load fixed splits
@@ -43,6 +46,10 @@ def createSplits(matrices, messages):
 
     return X_train,X_val,X_test,y_train,y_val,y_test
 
+def valModels(model,y_val):
+    print("validating models:")
+
+
 
 
 def main():
@@ -75,10 +82,24 @@ def main():
 
     x_train_knn,x_val_knn,x_test_knn,y_train_knn,y_val_knn,y_test_knn = createSplits(X_tfidf,messages)  # for kNN
 
-    knn_model = KNeighborsClassifier(n_neighbors=5)
-    knn_model.fit(x_train_knn,y_train_knn)
+    base_knn = Pipeline(steps=[
+        ("knn",KNeighborsClassifier())]
+    )
+    base_knn.fit(x_train_knn,y_train_knn)
+    print(base_knn.classes_)
+    print(base_knn.score(x_val_knn,y_val_knn))
+
+    base_naive = MultinomialNB()
+    base_naive.fit(x_train_multi,y_train_multi)
+    print(base_naive.classes_)
+    print(base_naive.score(x_val_multi,y_val_multi))
+
+    
+
+
+
+
 
 main()
 
-    
     
