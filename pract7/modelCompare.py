@@ -59,9 +59,7 @@ def evaluate_model(model,X,y,split_name="validation"):
         print(f"{metric_name:>10}: {value:4f}")
     print("confusion Matrix:")
     print(confusion_matrix(y, y_pred))
-
-    return metrics, y_pred
-
+    return y_pred, metrics
 
 def show_mistakes(messages,indices, y_true,y_pred, model_name, max_examples = 5):
     print(f"\n Representatives mistakes for {model_name}:")
@@ -100,7 +98,7 @@ def train_naive_bayes(X_train, y_train, X_val, y_val):
     nb_model = MultinomialNB()
     nb_model.fit(X_train,y_train)
 
-    val_metrics , y_val_pred = evaluate_model(nb_model,X_val,y_val,split_name="validation"),
+    y_val_pred, val_metrics = evaluate_model(nb_model,X_val,y_val,split_name="validation")
     return nb_model, val_metrics, y_val_pred
 
 def train_knn(X_train, y_train, X_val, y_val, k_values ):
@@ -117,11 +115,11 @@ def train_knn(X_train, y_train, X_val, y_val, k_values ):
     for k in k_values:
         print(f"attempting knn model with k:{k}")
         knn_model = Pipeline(steps=[
-            ("scalar", MaxAbsScaler), 
+            ("scalar", MaxAbsScaler()), 
             ("knn", KNeighborsClassifier(n_neighbors=k, metric="cosine", algorithm="brute"))
         ])
         knn_model.fit(X_train, y_train)
-        val_metrics, y_val_pred = evaluate_model(knn_model, X_val,y_val,split_name="validation")
+        y_val_pred, val_metrics = evaluate_model(knn_model, X_val,y_val,split_name="validation")
 
         row = {
             "model": "kNN",
@@ -182,7 +180,7 @@ def main():
     # --------------------------
     # kNN (at least 3 k values)
     # --------------------------
-    best_knn_model, best_knn_metrics, best_knn_val_pred, knn_rows = train_knn_models(
+    best_knn_model, best_knn_metrics, best_knn_val_pred, knn_rows = train_knn(
         x_train_knn, y_train_knn, x_val_knn, y_val_knn, k_values=(3, 5, 11)
     )
 
