@@ -1,7 +1,8 @@
 import pandas as pd
 from pandas.api.types import is_numeric_dtype
 import numpy as np
-from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt 
+from sklearn.model_selection import train_test_split,RandomizedSearchCV
 from sklearn.preprocessing import StandardScaler,OneHotEncoder
 from sklearn.impute import SimpleImputer
 from sklearn.compose import ColumnTransformer
@@ -22,9 +23,9 @@ VAL_SIZE = 0.15
 def split_data(x,y):
     x_trainval,x_test,y_trainval,y_test = train_test_split(x,y,test_size=TESTING_SIZE, random_state=RANDOM_SEED, stratify=y)
 
-    x_val_split = VAL_SIZE/(1-TESTING_SIZE)
+    x_val_split = VAL_SIZE/(1.0-TESTING_SIZE)
 
-    x_train,x_val,y_train,y_val = train_test_split(x_trainval,y_trainval,train_size=x_val_split,random_state=RANDOM_SEED,stratify=y_trainval)
+    x_train,x_val,y_train,y_val = train_test_split(x_trainval,y_trainval,test_size=x_val_split,random_state=RANDOM_SEED,stratify=y_trainval)
 
     return x_train,x_val,x_trainval,x_test,y_train,y_val,y_trainval,y_test 
 
@@ -43,7 +44,8 @@ def pre_proc(x_train):
     pre = ColumnTransformer(transformers=[
         ("num_pipe",num_pipe,num_col),
         ("cat_pipe",cat_pipe,cat_col)
-    ])
+    ],
+    remainder="drop")
     return pre
 
 
@@ -56,7 +58,7 @@ def check_dtypes(df):
 
 def train_linear_svm(x_train,y_train,x_val,y_val,c_values):
     print("\n"+"=" * 60)
-    print("training linear SVM model")
+    print("training linear SVM model tested on val data")
     print("=" * 60)
     results = []
     models = {}
@@ -68,12 +70,13 @@ def train_linear_svm(x_train,y_train,x_val,y_val,c_values):
             ("pre",pre),
             ("svm",LinearSVC(
                 random_state=RANDOM_SEED,
-                C=float(c)
+                C=float(c),
+                class_weight="balanced"
                 ))
             ])
         linear_svc_model.fit(x_train,y_train)
 
-        y_pred, val_metrics = evaluate_model(linear_svc_model,x_val,y_val)
+        val_metrics = evaluate_model(linear_svc_model,x_val,y_val)
 
         row = {
             "model": "linear svc",
@@ -82,7 +85,6 @@ def train_linear_svm(x_train,y_train,x_val,y_val,c_values):
             "Recall":val_metrics["Recall"],
             "Precision":val_metrics["Precision"],
             "f1":val_metrics["f1"],
-            "y_pred": y_pred
         }
         models[c] = linear_svc_model
 
@@ -91,13 +93,12 @@ def train_linear_svm(x_train,y_train,x_val,y_val,c_values):
     compare_results_df = pd.DataFrame(results)
     best_metrics = selecting_best_c(compare_results_df)
     best_model = models[best_metrics["C"]]
-    best_pred = best_metrics["y_pred"]
 
-    return best_model, best_pred, best_metrics, compare_results_df
-
+    return best_model, best_metrics, compare_results_df
 
 
-def evaluate_model(model,x,y,split_name="Validation"):
+
+def evaluate_model(model,x,y):
     y_pred = model.predict(x)
 
     metrics = {
@@ -106,13 +107,7 @@ def evaluate_model(model,x,y,split_name="Validation"):
         "Precision": precision_score(y,y_pred),
         "f1": f1_score(y,y_pred),
     }
-
-    # print(f"{split_name.upper()} METRICS")
-    # for metric_name, value in metrics.items():
-    #     print(f"{metric_name:>10} : {value:4f}")
-    # print("Confustion Matrix:")
-    # print(confusion_matrix(y,y_pred))
-    return y_pred,metrics
+    return metrics
 
 
 
@@ -120,22 +115,25 @@ def selecting_best_c(results_df, tolerance = 0.01):
     best_f1 = results_df["f1"].max()
     contenders = results_df[results_df["f1"] >= best_f1 - tolerance]
     best_row = contenders.loc[contenders["C"].idxmin()]
-    # best_metrics = {
-    #         "model": best_row["model"],
-    #         "C": best_row["C"],
-    #         "Accuracy":best_row["Accuracy"],
-    #         "Recall":best_row["Recall"],
-    #         "Precision":best_row["Precision"],
-    #         "f1":best_row["f1"],
-    #         "y_pred": best_row["y_pred"]
-    #     }
     return best_row
+
+def random_cv(params,model):
+    search = RandomizedSearchCV(
+        estimator=model,
+        param_distributions=params,
+        n_iter=40,
+        scoring="f1",
+        cv=5,
+        n_jobs=-1,
+        verbose=1,
+        random_state=RANDOM_SEED
+    )
+    return search
 
 
 
 def main():
     df = pd.read_csv("./dataset_svm.csv")
-    # check_dtypes(df)
     TARGET_COLUMN = "churned_next_month"
     DROP_COL = [TARGET_COLUMN, "customer_id"]
 
@@ -148,17 +146,24 @@ def main():
     print("y after cleaned na's:", y.isna().sum())
     x = df.drop(columns=DROP_COL)
 
-    
-
     x_train, x_val, x_trainval, x_test, y_train , y_val, y_trainval, y_test = split_data(x,y)
 
     C_values = np.logspace(-3,3,13)
 
+    linear_best_model, linear_best_metrics, linear_results_df = train_linear_svm(x_train,y_train,x_val,y_val,C_values)
 
-    linear_best_model, linear_best_pred, linear_best_metrics, linear_results_df = train_linear_svm(x_train,y_train,x_val,y_val,C_values)
-    drop_col = ["model","y_pred"]
-    linear_results_df = linear_results_df.drop(columns=drop_col)
     print(linear_results_df)
+
+    print(linear_best_metrics)
+
+    corr_with_target = x_train.select_dtypes(include="number").corrwith(y_train)
+    corr_with_target.sort_values().plot(kind="barh")
+    plt.title("Feature Correlation with Target")
+    plt.savefig("correlations.png")
+    plt.close()
+
+
+    
 
 
     
