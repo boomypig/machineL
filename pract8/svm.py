@@ -2,12 +2,13 @@ import pandas as pd
 from pandas.api.types import is_numeric_dtype
 import numpy as np
 import matplotlib.pyplot as plt 
+from scipy.stats import loguniform, randint
 from sklearn.model_selection import train_test_split,RandomizedSearchCV
 from sklearn.preprocessing import StandardScaler,OneHotEncoder
 from sklearn.impute import SimpleImputer
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
-from sklearn.svm import LinearSVC, SVC
+from sklearn.svm import SVC
 from sklearn.metrics import (
     accuracy_score,
     precision_score,
@@ -18,20 +19,15 @@ from sklearn.metrics import (
 
 RANDOM_SEED = 119
 TESTING_SIZE = 0.15
-VAL_SIZE = 0.15
 
 def split_data(x,y):
     x_trainval,x_test,y_trainval,y_test = train_test_split(x,y,test_size=TESTING_SIZE, random_state=RANDOM_SEED, stratify=y)
 
-    x_val_split = VAL_SIZE/(1.0-TESTING_SIZE)
+    return x_trainval,x_test,y_trainval,y_test 
 
-    x_train,x_val,y_train,y_val = train_test_split(x_trainval,y_trainval,test_size=x_val_split,random_state=RANDOM_SEED,stratify=y_trainval)
-
-    return x_train,x_val,x_trainval,x_test,y_train,y_val,y_trainval,y_test 
-
-def pre_proc(x_train):
-    num_col = [c for c in x_train.columns if is_numeric_dtype(x_train[c])]
-    cat_col = [c for c in x_train.columns if c not in num_col]
+def pre_proc(x):
+    num_col = [c for c in x.columns if is_numeric_dtype(x[c])]
+    cat_col = [c for c in x.columns if c not in num_col]
 
     num_pipe= Pipeline(steps=[
         ("imputer", SimpleImputer(strategy="median")),
@@ -48,78 +44,22 @@ def pre_proc(x_train):
     remainder="drop")
     return pre
 
-
-def check_dtypes(df):
-    columns = df.columns
-    for col in columns:
-        print(f"\nex of values in col: {col} \n {df[col].head()} \n")
-
-
-
-def train_linear_svm(x_train,y_train,x_val,y_val,c_values):
-    print("\n"+"=" * 60)
-    print("training linear SVM model tested on val data")
-    print("=" * 60)
-    results = []
-    models = {}
-
-    for c in c_values:
-        pre = pre_proc(x_train)
-        # print(f"attempting with c: {c}")
-        linear_svc_model = Pipeline(steps=[
-            ("pre",pre),
-            ("svm",LinearSVC(
-                random_state=RANDOM_SEED,
-                C=float(c),
-                class_weight="balanced"
-                ))
-            ])
-        linear_svc_model.fit(x_train,y_train)
-
-        val_metrics = evaluate_model(linear_svc_model,x_val,y_val)
-
-        row = {
-            "model": "linear svc",
-            "C": c,
-            "Accuracy":val_metrics["Accuracy"],
-            "Recall":val_metrics["Recall"],
-            "Precision":val_metrics["Precision"],
-            "f1":val_metrics["f1"],
-        }
-        models[c] = linear_svc_model
-
-        results.append(row)
-    
-    compare_results_df = pd.DataFrame(results)
-    best_metrics = selecting_best_c(compare_results_df)
-    best_model = models[best_metrics["C"]]
-
-    return best_model, best_metrics, compare_results_df
-
-
-
 def evaluate_model(model,x,y):
     y_pred = model.predict(x)
+
 
     metrics = {
         "Accuracy": accuracy_score(y,y_pred),
         "Recall": recall_score(y,y_pred),
         "Precision": precision_score(y,y_pred),
         "f1": f1_score(y,y_pred),
+        "cm": confusion_matrix(y,y_pred),
     }
     return metrics
 
-
-
-def selecting_best_c(results_df, tolerance = 0.01):
-    best_f1 = results_df["f1"].max()
-    contenders = results_df[results_df["f1"] >= best_f1 - tolerance]
-    best_row = contenders.loc[contenders["C"].idxmin()]
-    return best_row
-
-def random_cv(params,model):
+def random_cv(params,pipe):
     search = RandomizedSearchCV(
-        estimator=model,
+        estimator=pipe,
         param_distributions=params,
         n_iter=40,
         scoring="f1",
@@ -146,24 +86,60 @@ def main():
     print("y after cleaned na's:", y.isna().sum())
     x = df.drop(columns=DROP_COL)
 
-    x_train, x_val, x_trainval, x_test, y_train , y_val, y_trainval, y_test = split_data(x,y)
+    x_trainval, x_test, y_trainval, y_test = split_data(x,y)
 
-    pre = pre_proc(x_train)
+    pre = pre_proc(x_trainval)
 
-    linear_svm_pipe = Pipeline(steps=[
+    pipe = Pipeline(steps=[
         ("pre",pre),
-        ("linear_svm",LinearSVC(
+        ("clf",SVC(
         class_weight="balanced"))
     ])
 
-    params = {
-        ""
+    C_values = np.logspace(-2, 3, 30)
+
+    linear_params = {
+        "clf__kernel": ["linear"],
+        "clf__C": C_values,
     }
 
+    kern_params = {
+        "clf__C": C_values,
+        "clf__kernel": ["rbf","poly"],
+        "clf__gamma": loguniform(1e-4, 1e0),
+        "clf__degree": randint(2, 6),
+    }
     
 
+    linear_search = random_cv(linear_params,pipe)
 
+    linear_search.fit(x_trainval,y_trainval)
+
+    linear_model = linear_search.best_estimator_
+
+    linear_scores = pd.DataFrame(linear_search.cv_results_)
+    print(linear_scores.head().sort_values(by="rank_test_score", ascending=True))
+
+    print("linear search best params", linear_search.best_params_)
+    print("linear best f1", linear_search.best_score_)
+
+
+    kern_search = random_cv(kern_params,pipe)
+
+    kern_search.fit(x_trainval,y_trainval)
+
+    kern_model = kern_search.best_estimator_
+
+    kern_scores = pd.DataFrame(kern_search.cv_results_)
+    print(kern_scores.head().sort_values(by="rank_test_score", ascending=True))
+
+    print("kerned serach best params", kern_search.best_params_)
+    print("kern best f1", kern_search.best_score_)
+
+    linear_metrics = evaluate_model(linear_model,x_test,y_test)
+    kern_metrics = evaluate_model(kern_model,x_test,y_test)
     
-
+    print("linear metrics: \n" , linear_metrics)
+    print("kernal Metrics: \n", kern_metrics)
 
 main()
