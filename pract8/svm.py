@@ -148,20 +148,17 @@ def main():
 
     x_train, x_val, x_trainval, x_test, y_train , y_val, y_trainval, y_test = split_data(x,y)
 
-    C_values = np.logspace(-3,3,13)
+    pre = pre_proc(x_train)
 
-    linear_best_model, linear_best_metrics, linear_results_df = train_linear_svm(x_train,y_train,x_val,y_val,C_values)
+    linear_svm_pipe = Pipeline(steps=[
+        ("pre",pre),
+        ("linear_svm",LinearSVC(
+        class_weight="balanced"))
+    ])
 
-    print(linear_results_df)
-
-    print(linear_best_metrics)
-
-    corr_with_target = x_train.select_dtypes(include="number").corrwith(y_train)
-    corr_with_target.sort_values().plot(kind="barh")
-    plt.title("Feature Correlation with Target")
-    plt.savefig("correlations.png")
-    plt.close()
-
+    params = {
+        ""
+    }
 
     
 
