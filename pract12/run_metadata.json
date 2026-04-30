@@ -1,0 +1,20 @@
+{
+  "config": {
+    "data_dir": "./data",
+    "batch_size": 128,
+    "num_workers": 0,
+    "val_size": 10000,
+    "epochs": 10,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "random_seed": 119,
+    "checkpoint_path": "best_fashion_mnist_cnn.pt",
+    "plot_path": "fashion_mnist_training_plot.png",
+    "metrics_path": "fashion_mnist_metrics.json",
+    "device_preference": "auto"
+  },
+  "torch_version": "2.11.0+cu130",
+  "numpy_version": "2.4.4",
+  "device": "cpu",
+  "cuda_available": false
+}

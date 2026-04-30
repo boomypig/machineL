@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+.uv/zz
+data/
+fashion.csv
+*.csv
+./data/*
