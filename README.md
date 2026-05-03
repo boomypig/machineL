@@ -15,4 +15,4 @@ A collection of 12 practicals covering core machine learning topics, built with 
 | `pract9` | Ensemble methods (Decision Trees, Random Forest) |
 | `pract10` | Unsupervised learning (PCA, K-Means) |
 | `pract11` | Multi-Layer Perceptron (PyTorch) |
-| `pract12` | Convolutional Neural Network – Fashion-MNIST (PyTorch) |
+| `mnist-fashion` | Convolutional Neural Network – Fashion-MNIST (PyTorch) |
